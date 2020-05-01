@@ -16,6 +16,8 @@ dependencies {
     compile fileTree(include: ['*.jar'], dir: 'libs')
     compileOnly 'org.projectlombok:lombok:1.18.12'
     compile group: 'commons-io', name: 'commons-io', version: '2.6'
+    compile group: 'org.openjfx', name: 'javafx', version: '11', ext: 'pom'
+    compile group: 'org.apache.commons', name: 'commons-lang3', version: '3.0'
 
     annotationProcessor 'org.projectlombok:lombok:1.18.12'
 
