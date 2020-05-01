@@ -1,10 +1,10 @@
-package com.Erag0.USBCrypt.crypto;
+package com.Erag0.USBCrypt.crypto.algorithm;
 
 import com.Erag0.USBCrypt.exception.InputDataLengthException;
 import lombok.NoArgsConstructor;
 
 @NoArgsConstructor
-public class Shacal2 {
+public class Shacal2 implements BaseAlgorithm {
     private final static int[] K = {
             0x428a2f98, 0x71374491, 0xb5c0fbcf, 0xe9b5dba5, 0x3956c25b, 0x59f111f1, 0x923f82a4, 0xab1c5ed5,
             0xd807aa98, 0x12835b01, 0x243185be, 0x550c7dc3, 0x72be5d74, 0x80deb1fe, 0x9bdc06a7, 0xc19bf174,
@@ -20,13 +20,14 @@ public class Shacal2 {
     private static final int ROUNDS = 64;
     private int[] workingKey = null;
 
+    @Override
     public void init(boolean _forEncryption, byte[] key) {
         this.forEncryption = _forEncryption;
         workingKey = new int[64];
         setKey(key);
     }
 
-    public void setKey(byte[] kb) {
+    private void setKey(byte[] kb) {
         if (kb.length > 64 || kb.length < 16 || kb.length % 8 != 0) {
             throw new IllegalArgumentException("Shacal2-key must be 16 - 64 bytes and multiple of 8");
         }
@@ -48,7 +49,7 @@ public class Shacal2 {
 
     private void encryptBlock(byte[] in, int inOffset, byte[] out, int outOffset) {
         int[] block = new int[BLOCK_SIZE / 4];
-        byteBlockToInts(in, block, inOffset, 0);
+        byteBlockToInts(in, block, inOffset);
 
         for (int i = 0; i < ROUNDS; i++) {
             int tmp =
@@ -75,8 +76,8 @@ public class Shacal2 {
 
     private void decryptBlock(byte[] in, int inOffset, byte[] out, int outOffset) {
         int[] block = new int[BLOCK_SIZE / 4];
-        byteBlockToInts(in, block, inOffset, 0);
-        for (int i = ROUNDS - 1; i >-1; i--) {
+        byteBlockToInts(in, block, inOffset);
+        for (int i = ROUNDS - 1; i >= 0; i--) {
             int tmp = block[0] - (((block[1] >>> 2) | (block[1] << -2))
                     ^ ((block[1] >>> 13) | (block[1] << -13))
                     ^ ((block[1] >>> 22) | (block[1] << -22)))
@@ -97,7 +98,8 @@ public class Shacal2 {
         intsToBytes(block, out, outOffset);
     }
 
-    public int processBlock(byte[] in, int inOffset, byte[] out, int outOffset)
+    @Override
+    public void processBlock(byte[] in, int inOffset, byte[] out, int outOffset)
             throws InputDataLengthException, IllegalStateException {
         if (workingKey == null) {
             throw new IllegalStateException("Key not initialised");
@@ -117,8 +119,11 @@ public class Shacal2 {
         else {
             decryptBlock(in, inOffset, out, outOffset);
         }
+    }
 
-        return BLOCK_SIZE;
+    @Override
+    public void processBlock(byte[] in, byte[] out) {
+        processBlock(in, 0, out, 0);
     }
 
     private void bytesToInts(byte[] bytes, int[] block, int bytesPosition) {
@@ -139,12 +144,17 @@ public class Shacal2 {
         }
     }
 
-    private void byteBlockToInts(byte[] bytes, int[] block, int bytesPos, int blockPos) {
-        for (int i = blockPos; i < BLOCK_SIZE / 4; i++) {
-            block[i] = ((bytes[bytesPos++] & 0xFF) << 24)
-                    | ((bytes[bytesPos++] & 0xFF) << 16)
-                    | ((bytes[bytesPos++] & 0xFF) << 8)
-                    | (bytes[bytesPos++] & 0xFF);
+    private void byteBlockToInts(byte[] bytes, int[] block, int bytesPosition) {
+        for (int i = 0; i < BLOCK_SIZE / 4; i++) {
+            block[i] = ((bytes[bytesPosition++] & 0xFF) << 24)
+                    | ((bytes[bytesPosition++] & 0xFF) << 16)
+                    | ((bytes[bytesPosition++] & 0xFF) << 8)
+                    | (bytes[bytesPosition++] & 0xFF);
         }
+    }
+
+    @Override
+    public int getBlockSize() {
+        return BLOCK_SIZE;
     }
 }

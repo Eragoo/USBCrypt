@@ -1,6 +1,6 @@
 package com.Erago.USBCrypt.crypto;
 
-import com.Erag0.USBCrypt.crypto.Shacal2;
+import com.Erag0.USBCrypt.crypto.algorithm.Shacal2;
 import org.junit.Assert;
 import org.junit.Test;
 import java.util.Arrays;
