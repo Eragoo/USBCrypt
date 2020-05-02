@@ -1,6 +1,7 @@
 package com.Erag0.USBCrypt.gui;
 
 import com.Erag0.USBCrypt.crypto.CryptoDataDto;
+import com.Erag0.USBCrypt.crypto.CryptoHelper;
 import com.Erag0.USBCrypt.util.USB;
 import javafx.application.Application;
 import javafx.geometry.Pos;
@@ -43,8 +44,14 @@ public class MainWindow extends Application {
         HBox hBox = new HBox();
         hBox.setAlignment(Pos.CENTER);
 
+        PasswordField passwordField = new PasswordField();
+        passwordField.setPromptText("Write password:");
+
+        VBox radioVBox = new VBox();
         RadioButton backupButton = new RadioButton("backup");
-        backupButton.setAlignment(Pos.CENTER_LEFT);
+        RadioButton isEncryption = new RadioButton("encrypt");
+        radioVBox.getChildren().add(backupButton);
+        radioVBox.getChildren().add(isEncryption);
 
         Button reloadButton = new Button("reload");
         reloadButton.setAlignment(Pos.CENTER_RIGHT);
@@ -60,12 +67,18 @@ public class MainWindow extends Application {
                 cryptoDataDto.setFiles(filesSelectionModel.getSelectedItems().stream()
                         .map(el -> new File(el.getValue())).collect(Collectors.toList()));
                 cryptoDataDto.setBackup(backupButton.isSelected());
+                cryptoDataDto.setEncryption(isEncryption.isSelected());
+                assert nonNull(passwordField.getText());
+                cryptoDataDto.setPassword(passwordField.getText().getBytes());
+
+                CryptoHelper.run(cryptoDataDto);
             }
         });
 
-        hBox.getChildren().add(backupButton);
+        hBox.getChildren().add(passwordField);
         hBox.getChildren().add(startButton);
         hBox.getChildren().add(reloadButton);
+        hBox.getChildren().add(radioVBox);
         hBox.setMinSize(500, 40);
 
         return hBox;

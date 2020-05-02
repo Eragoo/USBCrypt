@@ -10,5 +10,7 @@ import java.util.List;
 @Setter
 public class CryptoDataDto {
     private boolean backup;
+    private byte[] password;
     private List<File> files;
+    private boolean isEncryption;
 }

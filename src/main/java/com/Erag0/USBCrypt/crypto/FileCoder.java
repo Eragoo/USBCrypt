@@ -11,7 +11,7 @@ import java.util.Arrays;
 public class FileCoder {
     private BaseAlgorithm algorithm;
 
-    public void processFile(File file, String key, boolean isEncryption) {
+    public void processFile(File file, byte[] key, boolean isEncryption) {
         String namePrefix = isEncryption ? "ENC" : "DEC";
         String encodedFileName = FilenameUtils.removeExtension(file.getPath())
                 + "-" + namePrefix + "."
@@ -25,7 +25,7 @@ public class FileCoder {
         }
     }
 
-    private void readFileAndWriteWithOffset(boolean isEncryption, FileInputStream sourceInputStream, FileOutputStream processedOutputStream, String key)
+    private void readFileAndWriteWithOffset(boolean isEncryption, FileInputStream sourceInputStream, FileOutputStream processedOutputStream, byte[] key)
             throws IOException {
         byte[] source = new byte[algorithm.getBlockSize()];
         byte[] processed = new byte[algorithm.getBlockSize()];
@@ -41,7 +41,7 @@ public class FileCoder {
         }
     }
 
-    private byte[] normalizeKey(String key) {
-        return Arrays.copyOf(key.getBytes(), 64);
+    private byte[] normalizeKey(byte[] key) {
+        return Arrays.copyOf(key, 64);
     }
 }
