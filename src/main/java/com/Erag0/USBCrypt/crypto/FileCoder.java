@@ -6,22 +6,40 @@ import org.apache.commons.io.FilenameUtils;
 
 import java.io.*;
 import java.util.Arrays;
+import java.util.Objects;
+
+import static java.util.Objects.isNull;
 
 @AllArgsConstructor
 public class FileCoder {
     private BaseAlgorithm algorithm;
 
-    public void processFile(File file, byte[] key, boolean isEncryption) {
+    public void processFile(File file, byte[] key, boolean isEncryption, boolean isBackupNeeded) {
+        if (isNull(file)){
+            return;
+        }
         String namePrefix = isEncryption ? "ENC" : "DEC";
         String encodedFileName = FilenameUtils.removeExtension(file.getPath())
                 + "-" + namePrefix + "."
                 + FilenameUtils.getExtension(file.getPath());
+        File processedFile = new File(encodedFileName);
 
-        try (FileInputStream bufferedInputStream = new FileInputStream(file);
-             FileOutputStream bufferedOutputStream = new FileOutputStream(new File(encodedFileName))) {
-            readFileAndWriteWithOffset(isEncryption, bufferedInputStream, bufferedOutputStream, key);
-        } catch (IOException ex) {
-            ex.printStackTrace();
+        if (file.isDirectory()) {
+            for (File f : Objects.requireNonNull(file.listFiles(file1 -> file1.canWrite() && file1.canRead()))) {
+                processFile(f, key, isEncryption, isBackupNeeded);
+            }
+        } else {
+            try (FileInputStream bufferedInputStream = new FileInputStream(file);
+                 FileOutputStream bufferedOutputStream = new FileOutputStream(processedFile)) {
+                readFileAndWriteWithOffset(isEncryption, bufferedInputStream, bufferedOutputStream, key);
+            } catch (IOException ex) {
+                ex.printStackTrace();
+            }
+        }
+        if (!isBackupNeeded && !file.isDirectory()) {
+            file.delete();
+            processedFile.renameTo(file);
+
         }
     }
 

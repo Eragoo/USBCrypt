@@ -66,7 +66,7 @@ public class MainWindow extends Application {
             if (nonNull(filesSelectionModel)) {
                 cryptoDataDto.setFiles(filesSelectionModel.getSelectedItems().stream()
                         .map(el -> new File(el.getValue())).collect(Collectors.toList()));
-                cryptoDataDto.setBackup(backupButton.isSelected());
+                cryptoDataDto.setBackupNeeded(backupButton.isSelected());
                 cryptoDataDto.setEncryption(isEncryption.isSelected());
                 assert nonNull(passwordField.getText());
                 cryptoDataDto.setPassword(passwordField.getText().getBytes());
