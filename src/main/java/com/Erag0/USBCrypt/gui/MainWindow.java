@@ -15,7 +15,6 @@ import javafx.stage.Stage;
 import lombok.NoArgsConstructor;
 
 import java.io.File;
-import java.util.Arrays;
 import java.util.Objects;
 import java.util.stream.Collectors;
 
@@ -26,6 +25,7 @@ public class MainWindow extends Application {
 
     private CryptoDataDto cryptoDataDto = new CryptoDataDto();
     private MultipleSelectionModel<TreeItem<String>> filesSelectionModel;
+    private TreeView<String> filesView;
 
     public void display(Stage stage) {
         stage.setTitle("USBCrypt");
@@ -39,28 +39,18 @@ public class MainWindow extends Application {
         stage.show();
     }
 
-    private Node getUsbRootsPanel() {
-        VBox rootsBox = new VBox();
-        rootsBox.setAlignment(Pos.CENTER);
-
-        TreeView<String> filesSystemView = new TreeView<>(loadUsbRoots(USB.getRoots()));
-        filesSystemView.setShowRoot(false);
-        filesSelectionModel = filesSystemView.getSelectionModel();
-        filesSelectionModel.setSelectionMode(SelectionMode.MULTIPLE);
-
-        rootsBox.setMinSize(500, 500);
-        rootsBox.getChildren().add(filesSystemView);
-        return rootsBox;
-    }
-
     private Node getTopOptionsPanel() {
         HBox hBox = new HBox();
         hBox.setAlignment(Pos.CENTER);
 
+        RadioButton backupButton = new RadioButton("backup");
+        backupButton.setAlignment(Pos.CENTER_LEFT);
+
         Button reloadButton = new Button("reload");
         reloadButton.setAlignment(Pos.CENTER_RIGHT);
         reloadButton.setOnAction(actionEvent -> {
-
+            filesView.setRoot(loadUsbRoots(USB.getRoots()));
+            filesView.refresh();
         });
 
         Button startButton = new Button("start");
@@ -69,11 +59,9 @@ public class MainWindow extends Application {
             if (nonNull(filesSelectionModel)) {
                 cryptoDataDto.setFiles(filesSelectionModel.getSelectedItems().stream()
                         .map(el -> new File(el.getValue())).collect(Collectors.toList()));
+                cryptoDataDto.setBackup(backupButton.isSelected());
             }
         });
-
-        RadioButton backupButton = new RadioButton("backup");
-        backupButton.setAlignment(Pos.CENTER_LEFT);
 
         hBox.getChildren().add(backupButton);
         hBox.getChildren().add(startButton);
@@ -81,6 +69,20 @@ public class MainWindow extends Application {
         hBox.setMinSize(500, 40);
 
         return hBox;
+    }
+
+    private Node getUsbRootsPanel() {
+        VBox rootsBox = new VBox();
+        rootsBox.setAlignment(Pos.CENTER);
+
+        filesView = new TreeView<>(loadUsbRoots(USB.getRoots()));
+        filesView.setShowRoot(false);
+        filesSelectionModel = filesView.getSelectionModel();
+        filesSelectionModel.setSelectionMode(SelectionMode.MULTIPLE);
+
+        rootsBox.setMinSize(500, 500);
+        rootsBox.getChildren().add(filesView);
+        return rootsBox;
     }
 
     private Node getProcessingPanel() {
@@ -91,11 +93,11 @@ public class MainWindow extends Application {
     }
 
     private TreeItem<String> loadUsbRoots(File[] rootFiles) {
-        TreeItem<String> root = new TreeItem<>();
+        TreeItem<String> roots = new TreeItem<>();
         for (File file : rootFiles) {
-            root.getChildren().add(getUsbRoots(file));
+            roots.getChildren().add(getUsbRoots(file));
         }
-        return root;
+        return roots;
     }
 
     private TreeItem<String> getUsbRoots(File rootFile) {
