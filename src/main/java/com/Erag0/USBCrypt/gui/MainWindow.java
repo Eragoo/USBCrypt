@@ -1,9 +1,11 @@
 package com.Erag0.USBCrypt.gui;
 
 import com.Erag0.USBCrypt.crypto.CryptoDataDto;
-import com.Erag0.USBCrypt.crypto.CryptoHelper;
+import com.Erag0.USBCrypt.crypto.CryptoTask;
 import com.Erag0.USBCrypt.util.USB;
 import javafx.application.Application;
+import javafx.geometry.Insets;
+import javafx.geometry.NodeOrientation;
 import javafx.geometry.Pos;
 import javafx.scene.Node;
 import javafx.scene.Scene;
@@ -16,6 +18,7 @@ import javafx.stage.Stage;
 import lombok.NoArgsConstructor;
 
 import java.io.File;
+import java.util.List;
 import java.util.Objects;
 import java.util.stream.Collectors;
 
@@ -27,13 +30,15 @@ public class MainWindow extends Application {
     private CryptoDataDto cryptoDataDto = new CryptoDataDto();
     private MultipleSelectionModel<TreeItem<String>> filesSelectionModel;
     private TreeView<String> filesView;
+    private Label statusLabel = new Label();
+    private ProgressBar progressBar = new ProgressBar();
 
     public void display(Stage stage) {
         stage.setTitle("USBCrypt");
         VBox root = new VBox();
         root.getChildren().add(getTopOptionsPanel());
         root.getChildren().add(getUsbRootsPanel());
-        root.getChildren().add(getProcessingPanel());
+        root.getChildren().add(getFooterPanel());
 
         Scene scene = new Scene(root);
         stage.setScene(scene);
@@ -44,16 +49,23 @@ public class MainWindow extends Application {
         HBox hBox = new HBox();
         hBox.setAlignment(Pos.CENTER);
 
+        Tooltip resetTip = new Tooltip("Reload file list");
+        Tooltip encodeTip = new Tooltip("Encode or Decode");
+        Tooltip backupTip = new Tooltip("Save backup");
+
         PasswordField passwordField = new PasswordField();
         passwordField.setPromptText("Write password:");
 
         VBox radioVBox = new VBox();
         RadioButton backupButton = new RadioButton("backup");
-        RadioButton isEncryption = new RadioButton("encrypt");
+        RadioButton encodeButton = new RadioButton("encrypt");
+        backupButton.setTooltip(backupTip);
+        encodeButton.setTooltip(encodeTip);
         radioVBox.getChildren().add(backupButton);
-        radioVBox.getChildren().add(isEncryption);
+        radioVBox.getChildren().add(encodeButton);
 
         Button reloadButton = new Button("reload");
+        reloadButton.setTooltip(resetTip);
         reloadButton.setAlignment(Pos.CENTER_RIGHT);
         reloadButton.setOnAction(actionEvent -> {
             filesView.setRoot(loadUsbRoots(USB.getRoots()));
@@ -64,14 +76,30 @@ public class MainWindow extends Application {
         startButton.setAlignment(Pos.CENTER);
         startButton.setOnAction(actionEvent -> {
             if (nonNull(filesSelectionModel)) {
+                startButton.setDisable(true);
                 cryptoDataDto.setFiles(filesSelectionModel.getSelectedItems().stream()
                         .map(el -> new File(el.getValue())).collect(Collectors.toList()));
                 cryptoDataDto.setBackupNeeded(backupButton.isSelected());
-                cryptoDataDto.setEncryption(isEncryption.isSelected());
+                cryptoDataDto.setEncryption(encodeButton.isSelected());
                 assert nonNull(passwordField.getText());
                 cryptoDataDto.setPassword(passwordField.getText().getBytes());
+                reloadButton.fire();
 
-                CryptoHelper.run(cryptoDataDto);
+                CryptoTask task = new CryptoTask();
+                task.setCryptoDataDto(cryptoDataDto);
+
+                progressBar.progressProperty().bind(task.progressProperty());
+                statusLabel.textProperty().bind(task.messageProperty());
+
+                task.setOnSucceeded(workerStateEvent -> {
+                    startButton.setDisable(false);
+                    List<File> processed = task.getValue();
+                    statusLabel.textProperty().unbind();
+                    statusLabel.setText("Processed: " + processed.size());
+                });
+                progressBar.setMinSize(100, 15);
+
+                new Thread(task).start();
             }
         });
 
@@ -80,7 +108,7 @@ public class MainWindow extends Application {
         hBox.getChildren().add(reloadButton);
         hBox.getChildren().add(radioVBox);
         hBox.setMinSize(500, 40);
-
+        hBox.setSpacing(10);
         return hBox;
     }
 
@@ -98,10 +126,26 @@ public class MainWindow extends Application {
         return rootsBox;
     }
 
-    private Node getProcessingPanel() {
+    private Node getFooterPanel() {
         VBox processingPanel = new VBox();
-        processingPanel.setAlignment(Pos.BOTTOM_CENTER);
+        processingPanel.setAlignment(Pos.TOP_CENTER);
         processingPanel.setMinSize(500, 100);
+        processingPanel.setSpacing(10);
+        processingPanel.setNodeOrientation(NodeOrientation.INHERIT);
+
+        progressBar.setProgress(0);
+        progressBar.progressProperty().unbind();
+        statusLabel.setWrapText(true);
+        statusLabel.textProperty().unbind();
+
+        HBox progressBarBox = new HBox();
+        progressBarBox.setAlignment(Pos.TOP_CENTER);
+        progressBarBox.setSpacing(20);
+        progressBarBox.setMinSize(500, 20);
+        progressBarBox.getChildren().addAll(progressBar, statusLabel);
+
+        processingPanel.getChildren().add(progressBarBox);
+
         return processingPanel;
     }
 
