@@ -4,12 +4,12 @@ import com.Erag0.USBCrypt.crypto.CryptoDataDto;
 import com.Erag0.USBCrypt.crypto.CryptoTask;
 import com.Erag0.USBCrypt.util.USB;
 import javafx.application.Application;
-import javafx.geometry.Insets;
-import javafx.geometry.NodeOrientation;
 import javafx.geometry.Pos;
 import javafx.scene.Node;
 import javafx.scene.Scene;
 import javafx.scene.control.*;
+import javafx.scene.control.Button;
+import javafx.scene.control.Label;
 import javafx.scene.image.Image;
 import javafx.scene.image.ImageView;
 import javafx.scene.layout.HBox;
@@ -18,11 +18,15 @@ import javafx.stage.Stage;
 import lombok.NoArgsConstructor;
 
 import java.io.File;
+import java.time.LocalDateTime;
+import java.time.LocalTime;
 import java.util.List;
 import java.util.Objects;
 import java.util.stream.Collectors;
 
+import static java.util.Objects.isNull;
 import static java.util.Objects.nonNull;
+import static org.apache.commons.lang3.StringUtils.isBlank;
 
 @NoArgsConstructor
 public class MainWindow extends Application {
@@ -30,12 +34,15 @@ public class MainWindow extends Application {
     private CryptoDataDto cryptoDataDto = new CryptoDataDto();
     private MultipleSelectionModel<TreeItem<String>> filesSelectionModel;
     private TreeView<String> filesView;
-    private Label statusLabel = new Label();
+    private Label statusLabel = new Label("Processed: 0");
     private ProgressBar progressBar = new ProgressBar();
+    private VBox logsBox = new VBox();
 
     public void display(Stage stage) {
         stage.setTitle("USBCrypt");
         VBox root = new VBox();
+        root.setSpacing(5);
+        root.setAlignment(Pos.TOP_CENTER);
         root.getChildren().add(getTopOptionsPanel());
         root.getChildren().add(getUsbRootsPanel());
         root.getChildren().add(getFooterPanel());
@@ -59,10 +66,12 @@ public class MainWindow extends Application {
         VBox radioVBox = new VBox();
         RadioButton backupButton = new RadioButton("backup");
         RadioButton encodeButton = new RadioButton("encrypt");
+
         backupButton.setTooltip(backupTip);
         encodeButton.setTooltip(encodeTip);
-        radioVBox.getChildren().add(backupButton);
-        radioVBox.getChildren().add(encodeButton);
+        radioVBox.getChildren().addAll(backupButton, encodeButton);
+        radioVBox.setSpacing(5);
+        radioVBox.setStyle("-fx-padding:2");
 
         Button reloadButton = new Button("reload");
         reloadButton.setTooltip(resetTip);
@@ -75,38 +84,39 @@ public class MainWindow extends Application {
         Button startButton = new Button("start");
         startButton.setAlignment(Pos.CENTER);
         startButton.setOnAction(actionEvent -> {
-            if (nonNull(filesSelectionModel)) {
-                startButton.setDisable(true);
-                cryptoDataDto.setFiles(filesSelectionModel.getSelectedItems().stream()
-                        .map(el -> new File(el.getValue())).collect(Collectors.toList()));
-                cryptoDataDto.setBackupNeeded(backupButton.isSelected());
-                cryptoDataDto.setEncryption(encodeButton.isSelected());
-                assert nonNull(passwordField.getText());
-                cryptoDataDto.setPassword(passwordField.getText().getBytes());
-                reloadButton.fire();
-
-                CryptoTask task = new CryptoTask();
-                task.setCryptoDataDto(cryptoDataDto);
-
-                progressBar.progressProperty().bind(task.progressProperty());
-                statusLabel.textProperty().bind(task.messageProperty());
-
-                task.setOnSucceeded(workerStateEvent -> {
-                    startButton.setDisable(false);
-                    List<File> processed = task.getValue();
-                    statusLabel.textProperty().unbind();
-                    statusLabel.setText("Processed: " + processed.size());
-                });
-                progressBar.setMinSize(100, 15);
-
-                new Thread(task).start();
+            if (isBlank(passwordField.getText())) {
+                addLog("Password must be specified");
+                return;
             }
+            if (isNull(filesSelectionModel)) {
+                addLog("Choose files");
+                return;
+            }
+            startButton.setDisable(true);
+            cryptoDataDto.setFiles(filesSelectionModel.getSelectedItems().stream()
+                    .map(el -> new File(el.getValue())).collect(Collectors.toList()));
+            cryptoDataDto.setBackupNeeded(backupButton.isSelected());
+            cryptoDataDto.setEncryption(encodeButton.isSelected());
+            cryptoDataDto.setPassword(passwordField.getText().getBytes());
+            reloadButton.fire();
+
+            CryptoTask task = new CryptoTask();
+            task.setCryptoDataDto(cryptoDataDto);
+
+            progressBar.progressProperty().bind(task.progressProperty());
+            statusLabel.textProperty().bind(task.messageProperty());
+
+            task.setOnSucceeded(workerStateEvent -> {
+                startButton.setDisable(false);
+                List<File> processed = task.getValue();
+                statusLabel.textProperty().unbind();
+                statusLabel.setText("Processed: " + processed.size());
+            });
+
+            new Thread(task).start();
         });
 
-        hBox.getChildren().add(passwordField);
-        hBox.getChildren().add(startButton);
-        hBox.getChildren().add(reloadButton);
-        hBox.getChildren().add(radioVBox);
+        hBox.getChildren().addAll(passwordField, startButton, reloadButton, radioVBox);
         hBox.setMinSize(500, 40);
         hBox.setSpacing(10);
         return hBox;
@@ -121,30 +131,35 @@ public class MainWindow extends Application {
         filesSelectionModel = filesView.getSelectionModel();
         filesSelectionModel.setSelectionMode(SelectionMode.MULTIPLE);
 
-        rootsBox.setMinSize(500, 500);
+        rootsBox.setMinSize(500, 400);
         rootsBox.getChildren().add(filesView);
         return rootsBox;
     }
 
     private Node getFooterPanel() {
         VBox processingPanel = new VBox();
+        processingPanel.setMinSize(500, 130);
         processingPanel.setAlignment(Pos.TOP_CENTER);
-        processingPanel.setMinSize(500, 100);
-        processingPanel.setSpacing(10);
-        processingPanel.setNodeOrientation(NodeOrientation.INHERIT);
 
         progressBar.setProgress(0);
+        progressBar.setMinSize(200, 15);
         progressBar.progressProperty().unbind();
         statusLabel.setWrapText(true);
         statusLabel.textProperty().unbind();
 
         HBox progressBarBox = new HBox();
         progressBarBox.setAlignment(Pos.TOP_CENTER);
-        progressBarBox.setSpacing(20);
+        progressBarBox.setSpacing(5);
         progressBarBox.setMinSize(500, 20);
         progressBarBox.getChildren().addAll(progressBar, statusLabel);
 
-        processingPanel.getChildren().add(progressBarBox);
+        ScrollPane scrollPane = new ScrollPane();
+        scrollPane.setMinSize(500, 150);
+        logsBox.setSpacing(7);
+        logsBox.setAlignment(Pos.TOP_LEFT);
+
+        scrollPane.setContent(logsBox);
+        processingPanel.getChildren().addAll(progressBarBox, scrollPane);
 
         return processingPanel;
     }
@@ -178,6 +193,13 @@ public class MainWindow extends Application {
             }
         }
         return treeItem;
+    }
+
+    private void addLog(String msg) {
+        Label log = new Label("[" + LocalTime.now().getHour() + ":"
+                + LocalTime.now().getMinute() + ":" + LocalDateTime.now().getSecond() + "]: " + msg);
+        log.setWrapText(true);
+        logsBox.getChildren().add(log);
     }
 
     @Override
