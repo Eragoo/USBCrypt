@@ -18,7 +18,7 @@ public class CryptoTask extends Task<List<File>> {
         List<File> fileList = new ArrayList<>();
         int i = 0;
         for (File file : cryptoDataDto.getFiles()) {
-            this.updateMessage("Processing: " + file.getPath());
+            this.updateMessage("Processing: " + file.getName());
             fileCoder.processFile(file, cryptoDataDto.getPassword(),
                     cryptoDataDto.isEncryption(), cryptoDataDto.isBackupNeeded());
             fileList.add(file);

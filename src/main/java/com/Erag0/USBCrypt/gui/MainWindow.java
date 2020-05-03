@@ -2,6 +2,7 @@ package com.Erag0.USBCrypt.gui;
 
 import com.Erag0.USBCrypt.crypto.CryptoDataDto;
 import com.Erag0.USBCrypt.crypto.CryptoTask;
+import com.Erag0.USBCrypt.util.Logger;
 import com.Erag0.USBCrypt.util.USB;
 import javafx.application.Application;
 import javafx.geometry.Pos;
@@ -18,13 +19,10 @@ import javafx.stage.Stage;
 import lombok.NoArgsConstructor;
 
 import java.io.File;
-import java.time.LocalDateTime;
-import java.time.LocalTime;
 import java.util.List;
 import java.util.Objects;
 import java.util.stream.Collectors;
 
-import static java.util.Objects.isNull;
 import static java.util.Objects.nonNull;
 import static org.apache.commons.lang3.StringUtils.isBlank;
 
@@ -59,6 +57,7 @@ public class MainWindow extends Application {
         Tooltip resetTip = new Tooltip("Reload file list");
         Tooltip encodeTip = new Tooltip("Encode or Decode");
         Tooltip backupTip = new Tooltip("Save backup");
+        Tooltip cancelTip = new Tooltip("Cancel task");
 
         PasswordField passwordField = new PasswordField();
         passwordField.setPromptText("Write password:");
@@ -81,15 +80,19 @@ public class MainWindow extends Application {
             filesView.refresh();
         });
 
+        Button cancelButton = new Button("cancel");
+        cancelButton.setTooltip(cancelTip);
+        cancelButton.setAlignment(Pos.CENTER);
+
         Button startButton = new Button("start");
         startButton.setAlignment(Pos.CENTER);
         startButton.setOnAction(actionEvent -> {
             if (isBlank(passwordField.getText())) {
-                addLog("Password must be specified");
+                Logger.addLog("Password must be specified", logsBox);
                 return;
             }
-            if (isNull(filesSelectionModel)) {
-                addLog("Choose files");
+            if (filesSelectionModel.getSelectedItems().isEmpty()) {
+                Logger.addLog("Choose files", logsBox);
                 return;
             }
             startButton.setDisable(true);
@@ -98,7 +101,6 @@ public class MainWindow extends Application {
             cryptoDataDto.setBackupNeeded(backupButton.isSelected());
             cryptoDataDto.setEncryption(encodeButton.isSelected());
             cryptoDataDto.setPassword(passwordField.getText().getBytes());
-            reloadButton.fire();
 
             CryptoTask task = new CryptoTask();
             task.setCryptoDataDto(cryptoDataDto);
@@ -108,15 +110,34 @@ public class MainWindow extends Application {
 
             task.setOnSucceeded(workerStateEvent -> {
                 startButton.setDisable(false);
+                cancelButton.setDisable(false);
                 List<File> processed = task.getValue();
                 statusLabel.textProperty().unbind();
                 statusLabel.setText("Processed: " + processed.size());
             });
 
+            task.setOnFailed(e -> {
+                startButton.setDisable(false);
+                cancelButton.setDisable(false);
+            });
+
+            cancelButton.setOnAction(event -> {
+                task.cancel(true);
+                startButton.setDisable(false);
+                cancelButton.setDisable(true);
+
+                progressBar.progressProperty().unbind();
+                statusLabel.textProperty().unbind();
+                statusLabel.setText("Canceled");
+                progressBar.setProgress(0);
+            });
+
+
             new Thread(task).start();
+            cancelButton.setDisable(false);
         });
 
-        hBox.getChildren().addAll(passwordField, startButton, reloadButton, radioVBox);
+        hBox.getChildren().addAll(passwordField, startButton, cancelButton, reloadButton, radioVBox);
         hBox.setMinSize(500, 40);
         hBox.setSpacing(10);
         return hBox;
@@ -195,15 +216,13 @@ public class MainWindow extends Application {
         return treeItem;
     }
 
-    private void addLog(String msg) {
-        Label log = new Label("[" + LocalTime.now().getHour() + ":"
-                + LocalTime.now().getMinute() + ":" + LocalDateTime.now().getSecond() + "]: " + msg);
-        log.setWrapText(true);
-        logsBox.getChildren().add(log);
-    }
-
     @Override
     public void start(Stage stage) {
-        display(stage);
+        try {
+            display(stage);
+        } catch (Exception ex) {
+            Logger.addLog("Error: " + ex.getMessage(), logsBox);
+            ex.printStackTrace();
+        }
     }
 }
