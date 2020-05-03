@@ -9,6 +9,8 @@ import java.util.List;
 @Getter
 @Setter
 public class CryptoDataDto {
-    private boolean backup;
+    private boolean isBackupNeeded;
+    private byte[] password;
     private List<File> files;
+    private boolean isEncryption;
 }
