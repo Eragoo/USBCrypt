@@ -1,0 +1,2 @@
+# USBCrypt
+Desktop cryptography application
