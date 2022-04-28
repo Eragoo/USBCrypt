@@ -8,7 +8,7 @@ import java.util.List;
 
 @Getter
 @Setter
-public class CryptoDataDto {
+public class CryptoDataDto1 {
     private boolean isBackupNeeded;
     private byte[] password;
     private List<File> files;
